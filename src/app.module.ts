@@ -7,6 +7,7 @@ import { validateEnvironment } from "./config/env.validation";
 import redisConfig from "./config/redis.config";
 import { DatabaseModule } from "./database/database.module";
 import { RedisModule } from "./redis/redis.module";
+import { RoomsModule } from "./rooms/rooms.module";
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { RedisModule } from "./redis/redis.module";
     DatabaseModule,
     RedisModule,
     AuthModule,
+    RoomsModule,
   ],
 })
 export class AppModule {}

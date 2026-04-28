@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { randomBytes } from "crypto";
 import { eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { generatePrefixedId } from "../common/utils/id.util";
 import * as schema from "../database/schema";
 import { users } from "../database/schema";
 
@@ -35,7 +35,7 @@ export class UsersRepository {
   }
 
   async create(username: string) {
-    const id = this.generateId("usr");
+    const id = generatePrefixedId("usr");
 
     const rows = await this.db
       .insert(users)
@@ -46,9 +46,5 @@ export class UsersRepository {
       .returning();
 
     return rows[0];
-  }
-
-  private generateId(prefix: string): string {
-    return `${prefix}_${randomBytes(6).toString("hex")}`;
   }
 }

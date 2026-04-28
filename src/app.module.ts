@@ -6,6 +6,7 @@ import databaseConfig from "./config/database.config";
 import { validateEnvironment } from "./config/env.validation";
 import redisConfig from "./config/redis.config";
 import { DatabaseModule } from "./database/database.module";
+import { MessagesModule } from "./messages/messages.module";
 import { RedisModule } from "./redis/redis.module";
 import { RoomsModule } from "./rooms/rooms.module";
 
@@ -20,6 +21,7 @@ import { RoomsModule } from "./rooms/rooms.module";
     RedisModule,
     AuthModule,
     RoomsModule,
+    MessagesModule,
   ],
 })
 export class AppModule {}

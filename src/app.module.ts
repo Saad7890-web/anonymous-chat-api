@@ -1,10 +1,12 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { AuthModule } from "./auth/auth.module";
 import appConfig from "./config/app.config";
 import databaseConfig from "./config/database.config";
 import { validateEnvironment } from "./config/env.validation";
 import redisConfig from "./config/redis.config";
 import { DatabaseModule } from "./database/database.module";
+import { RedisModule } from "./redis/redis.module";
 
 @Module({
   imports: [
@@ -14,6 +16,8 @@ import { DatabaseModule } from "./database/database.module";
       validate: validateEnvironment,
     }),
     DatabaseModule,
+    RedisModule,
+    AuthModule,
   ],
 })
 export class AppModule {}

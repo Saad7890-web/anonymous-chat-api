@@ -6,6 +6,7 @@ import databaseConfig from "./config/database.config";
 import { validateEnvironment } from "./config/env.validation";
 import redisConfig from "./config/redis.config";
 import { DatabaseModule } from "./database/database.module";
+import { HealthModule } from "./health/health.module";
 import { MessagesModule } from "./messages/messages.module";
 import { RedisModule } from "./redis/redis.module";
 import { RoomsModule } from "./rooms/rooms.module";
@@ -24,6 +25,7 @@ import { WebSocketModule } from "./websocket/websocket.module";
     RoomsModule,
     MessagesModule,
     WebSocketModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

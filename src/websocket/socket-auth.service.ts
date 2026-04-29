@@ -1,4 +1,8 @@
-import { Injectable } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { AuthService } from "../auth/auth.service";
 import { RoomsService } from "../rooms/rooms.service";
 import type { SocketContext } from "./types/socket-context.type";
@@ -14,12 +18,19 @@ export class SocketAuthService {
     token: unknown,
     roomId: unknown,
   ): Promise<SocketContext> {
-    const sessionToken = this.extractSingleString(token, "token");
-    const targetRoomId = this.extractSingleString(roomId, "roomId");
+    const sessionToken = this.extractString(token, "token");
+    const targetRoomId = this.extractString(roomId, "roomId");
 
     const session = await this.authService.validateToken(sessionToken);
 
-    await this.roomsService.getRoomById(targetRoomId);
+    try {
+      await this.roomsService.getRoomById(targetRoomId);
+    } catch {
+      throw new NotFoundException({
+        code: "ROOM_NOT_FOUND",
+        message: `Room with id ${targetRoomId} does not exist`,
+      });
+    }
 
     return {
       userId: session.userId,
@@ -28,33 +39,21 @@ export class SocketAuthService {
     };
   }
 
-  private extractSingleString(value: unknown, fieldName: string): string {
-    if (typeof value !== "string") {
-      throw new Error(
-        JSON.stringify({
-          code: fieldName === "token" ? "UNAUTHORIZED" : "ROOM_NOT_FOUND",
-          message:
-            fieldName === "token"
-              ? "Missing or expired session token"
-              : "Room with the provided id does not exist",
-        }),
-      );
+  private extractString(value: unknown, fieldName: "token" | "roomId"): string {
+    if (typeof value !== "string" || !value.trim()) {
+      if (fieldName === "token") {
+        throw new UnauthorizedException({
+          code: "UNAUTHORIZED",
+          message: "Missing or expired session token",
+        });
+      }
+
+      throw new NotFoundException({
+        code: "ROOM_NOT_FOUND",
+        message: "Room with the provided id does not exist",
+      });
     }
 
-    const trimmed = value.trim();
-
-    if (!trimmed) {
-      throw new Error(
-        JSON.stringify({
-          code: fieldName === "token" ? "UNAUTHORIZED" : "ROOM_NOT_FOUND",
-          message:
-            fieldName === "token"
-              ? "Missing or expired session token"
-              : "Room with the provided id does not exist",
-        }),
-      );
-    }
-
-    return trimmed;
+    return value.trim();
   }
 }

@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import {
   ConnectedSocket,
   OnGatewayConnection,
@@ -9,13 +9,14 @@ import {
   WebSocketServer,
 } from "@nestjs/websockets";
 import { createAdapter } from "@socket.io/redis-adapter";
-import { Server, Socket } from "socket.io";
+import { Namespace, Socket } from "socket.io";
 import {
   REDIS_CHANNEL_MESSAGE_NEW,
   REDIS_CHANNEL_ROOM_DELETED,
 } from "../common/constants/chat.constants";
 import { REDIS_PUB_CLIENT, REDIS_SUB_CLIENT } from "../redis/redis.constants";
 import { RoomPresenceService } from "./room-presence.service";
+import { SocketAuthService } from "./socket-auth.service";
 import type { SocketContext } from "./types/socket-context.type";
 
 type MessageNewPayload = {
@@ -41,18 +42,15 @@ type RoomDeletedPayload = {
 })
 @Injectable()
 export class ChatGateway
-  implements
-    OnGatewayInit,
-    OnGatewayConnection,
-    OnGatewayDisconnect,
-    OnModuleInit
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   private readonly logger = new Logger(ChatGateway.name);
 
   @WebSocketServer()
-  private server!: Server;
+  private server!: Namespace;
 
   constructor(
+    private readonly socketAuthService: SocketAuthService,
     private readonly roomPresenceService: RoomPresenceService,
     @Inject(REDIS_PUB_CLIENT)
     private readonly pubClient: any,
@@ -60,63 +58,62 @@ export class ChatGateway
     private readonly subClient: any,
   ) {}
 
-  async onModuleInit(): Promise<void> {
-    if (!this.subClient.isOpen) {
-      await this.subClient.connect();
-    }
-  }
-
-  afterInit(server: Server): void {
-    const adapterHost =
-      typeof (server as any).adapter === "function"
-        ? server
-        : (server as any).server;
-
-    adapterHost.adapter(createAdapter(this.pubClient, this.subClient));
+  afterInit(server: Namespace): void {
+    const io = ((server as any).server ?? server) as any;
+    io.adapter(createAdapter(this.pubClient, this.subClient));
 
     this.server = server;
     void this.subscribeToRedisChannels();
   }
 
   async handleConnection(client: Socket): Promise<void> {
-    const context = client.data.context as SocketContext | undefined;
+    try {
+      const token =
+        client.handshake.auth?.token ?? client.handshake.query.token;
+      const roomId =
+        client.handshake.auth?.roomId ?? client.handshake.query.roomId;
 
-    if (!context) {
+      const context = await this.socketAuthService.validateConnection(
+        token,
+        roomId,
+      );
+      client.data.context = context;
+
+      const { roomId: resolvedRoomId, username } = context;
+
+      await client.join(resolvedRoomId);
+
+      const { isFirstSocket, activeUsers } =
+        await this.roomPresenceService.addSocket(
+          resolvedRoomId,
+          username,
+          client.id,
+        );
+
+      client.emit("room:joined", { activeUsers });
+
+      if (isFirstSocket) {
+        client.to(resolvedRoomId).emit("room:user_joined", {
+          username,
+          activeUsers,
+        });
+      }
+    } catch (error: any) {
       client.disconnect(true);
-      return;
-    }
-
-    const { roomId, username } = context;
-
-    await client.join(roomId);
-
-    const { isFirstSocket, activeUsers } =
-      await this.roomPresenceService.addSocket(roomId, username, client.id);
-
-    client.emit("room:joined", { activeUsers });
-
-    if (isFirstSocket) {
-      client.to(roomId).emit("room:user_joined", {
-        username,
-        activeUsers,
-      });
     }
   }
 
   async handleDisconnect(client: Socket): Promise<void> {
-    await this.cleanupSocket(client, false);
+    await this.cleanupSocket(client);
   }
 
   @SubscribeMessage("room:leave")
   async handleRoomLeave(@ConnectedSocket() client: Socket): Promise<void> {
-    await this.cleanupSocket(client, true);
+    await this.cleanupSocket(client);
     client.disconnect(true);
   }
 
-  private async cleanupSocket(
-    client: Socket,
-    initiatedByLeaveEvent: boolean,
-  ): Promise<void> {
+  private async cleanupSocket(client: Socket): Promise<void> {
     const context = client.data.context as SocketContext | undefined;
 
     if (!context || client.data.cleanedUp === true) {
@@ -136,7 +133,6 @@ export class ChatGateway
     }
 
     client.data.cleanedUp = true;
-    client.data.leaveInitiated = initiatedByLeaveEvent;
   }
 
   private async subscribeToRedisChannels(): Promise<void> {
@@ -145,6 +141,7 @@ export class ChatGateway
       async (rawMessage: string) => {
         try {
           const payload = JSON.parse(rawMessage) as MessageNewPayload;
+
           this.server.local
             .to(payload.roomId)
             .emit("message:new", payload.message);
@@ -164,6 +161,7 @@ export class ChatGateway
           const payload = JSON.parse(rawMessage) as RoomDeletedPayload;
 
           await this.roomPresenceService.clearRoom(payload.roomId);
+
           this.server.local.to(payload.roomId).emit("room:deleted", {
             roomId: payload.roomId,
           });

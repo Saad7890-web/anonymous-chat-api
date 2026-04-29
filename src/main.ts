@@ -12,6 +12,7 @@ async function bootstrap() {
     bufferLogs: true,
   });
 
+  app.enableShutdownHooks();
   app.setGlobalPrefix(APP_PREFIX);
 
   app.enableCors({

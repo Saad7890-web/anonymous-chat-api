@@ -31,7 +31,7 @@ Built with **NestJS**, **PostgreSQL**, **Drizzle ORM**, **Redis**, and **Socket.
 ### 1. Clone the repository
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/Saad7890-web/anonymous-chat-api.git
 cd anonymous-chat-api
 ```
 

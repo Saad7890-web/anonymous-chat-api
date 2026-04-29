@@ -10,5 +10,6 @@ import { RoomsService } from "./rooms.service";
   imports: [AuthModule, RedisModule],
   controllers: [RoomsController],
   providers: [RoomsService, RoomsRepository, AuthGuard],
+  exports: [RoomsService, RoomsRepository],
 })
 export class RoomsModule {}

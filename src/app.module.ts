@@ -9,6 +9,7 @@ import { DatabaseModule } from "./database/database.module";
 import { MessagesModule } from "./messages/messages.module";
 import { RedisModule } from "./redis/redis.module";
 import { RoomsModule } from "./rooms/rooms.module";
+import { WebSocketModule } from "./websocket/websocket.module";
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { RoomsModule } from "./rooms/rooms.module";
     AuthModule,
     RoomsModule,
     MessagesModule,
+    WebSocketModule,
   ],
 })
 export class AppModule {}

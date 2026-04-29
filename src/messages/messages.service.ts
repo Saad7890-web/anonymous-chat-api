@@ -45,14 +45,7 @@ export class MessagesService {
 
     const trimmed = content.trim();
 
-    if (!trimmed) {
-      throw new UnprocessableEntityException({
-        code: "MESSAGE_TOO_LONG",
-        message: "Message content must not exceed 1000 characters",
-      });
-    }
-
-    if (trimmed.length > 1000) {
+    if (!trimmed || trimmed.length > 1000) {
       throw new UnprocessableEntityException({
         code: "MESSAGE_TOO_LONG",
         message: "Message content must not exceed 1000 characters",

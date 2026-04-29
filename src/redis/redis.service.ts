@@ -62,6 +62,10 @@ export class RedisService implements OnModuleDestroy {
     return this.client.sCard(key);
   }
 
+  async delMany(...keys: string[]): Promise<number> {
+    return this.client.del(keys);
+  }
+
   async getActiveUserCount(roomId: string): Promise<number> {
     return this.sCard(this.activeUsersKey(roomId));
   }
